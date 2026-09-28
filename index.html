@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spelling Practice</title>
+<style>
+:root{--bg:#fff9fb;--card:#fff;--ink:#3d3740;--muted:#776d78;--pink:#e9a9bc;--pink2:#f8e2e9;--green:#4f8b66;--red:#b85d6a;--line:#eadde2}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#fff9fb,#fffdf8);color:var(--ink)}
+.wrap{max-width:760px;margin:auto;padding:24px 16px 50px}.hero{text-align:center;margin:8px 0 20px}.hero h1{margin:0;font-size:clamp(30px,7vw,48px)}.hero p{color:var(--muted);margin:7px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px;margin:14px 0;box-shadow:0 8px 24px #7040550d}
+h2{font-size:20px;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+button{-webkit-appearance:none;appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;border:0;border-radius:15px;padding:13px 15px;font-size:16px;font-weight:700;cursor:pointer;background:var(--pink2);color:var(--ink)}
+button.primary{background:var(--pink)} button.secondary{background:#f3eef0} button:disabled{opacity:.5;cursor:not-allowed}
+.mode{display:flex;gap:10px;flex-wrap:wrap}.hidden{display:none!important}
+.top{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-weight:650;flex-wrap:wrap}
+.listen{display:block;margin:22px auto 14px;font-size:21px;padding:16px 24px}
+input{-webkit-appearance:none;appearance:none;width:100%;border:2px solid var(--line);border-radius:16px;padding:15px 16px;font-size:22px;text-align:center;outline:none}
+input:focus{border-color:var(--pink)}.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.feedback{text-align:center;min-height:28px;font-size:18px;font-weight:750;margin-top:14px}.ok{color:var(--green)}.bad{color:var(--red)}
+.hint{text-align:center;background:#fff7dc;border-radius:14px;padding:12px;margin-top:12px}.small{font-size:14px;color:var(--muted)}
+.result{text-align:center}.score{font-size:48px;font-weight:800;margin:8px}.pill{display:inline-block;background:var(--pink2);padding:7px 11px;border-radius:999px;margin:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero"><h1>Spelling Practice ✨</h1><p>Listen carefully. Hear it, build it, spell it!</p></div>
+
+  <section id="setup" class="card">
+    <h2>1. Choose a sound group</h2>
+    <div class="grid" id="groups"></div>
+    <h2 style="margin-top:20px">2. Choose a mode</h2>
+    <div class="mode">
+      <button data-mode="complete">Listen & Complete</button>
+      <button data-mode="write">Listen & Write</button>
+    </div>
+    <div class="actions"><button id="start" class="primary" disabled>Start practice →</button></div>
+    <p class="small" style="text-align:center">Audio uses an American English voice when one is available on the device.</p>
+  </section>
+
+  <section id="game" class="card hidden">
+    <div class="top"><span id="progress"></span><span id="score"></span></div>
+    <button id="listen" class="listen primary">🔊 Listen</button>
+    <div id="prompt" class="small" style="text-align:center;margin-bottom:8px"></div>
+    <input id="answer" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type here">
+    <div class="actions">
+      <button id="check" class="primary">Check</button>
+      <button id="hintBtn" class="secondary hidden">Hint</button>
+      <button id="next" class="primary hidden">Next →</button>
+    </div>
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+    <div id="hint" class="hint hidden"></div>
+  </section>
+
+  <section id="finish" class="card result hidden">
+    <h2>Great job! 🌟</h2>
+    <div id="finalScore" class="score"></div>
+    <div id="summary"></div>
+    <div class="actions">
+      <button id="mistakes" class="primary hidden">Practise mistakes again</button>
+      <button id="home" class="secondary">Choose another practice</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const groups = {
+  "Aa — closed": [
+    {w:"cat", part:"a"}, {w:"bag", part:"a"}, {w:"map", part:"a"}, {w:"hand", part:"a"}
+  ],
+  "Aa — open": [
+    {w:"name", part:"a"}, {w:"cake", part:"a"}, {w:"game", part:"a"}, {w:"lake", part:"a"}
+  ],
+  "Ii — closed": [
+    {w:"big", part:"i"}, {w:"sit", part:"i"}, {w:"milk", part:"i"}, {w:"six", part:"i"}
+  ],
+  "Ii — open": [
+    {w:"bike", part:"i"}, {w:"five", part:"i"}, {w:"nine", part:"i"}, {w:"time", part:"i"}
+  ],
+  "ai / ay": [
+    {w:"rain", part:"ai"}, {w:"train", part:"ai"}, {w:"tail", part:"ai"}, {w:"snail", part:"ai"},
+    {w:"day", part:"ay"}, {w:"play", part:"ay"}, {w:"say", part:"ay"}, {w:"stay", part:"ay"}
+  ],
+  "ar / air": [
+    {w:"car", part:"ar"}, {w:"star", part:"ar"}, {w:"farm", part:"ar"}, {w:"park", part:"ar"},
+    {w:"hair", part:"air"}, {w:"fair", part:"air"}, {w:"pair", part:"air"}, {w:"stair", part:"air"}
+  ],
+  "c / k / ck": [
+    {w:"cat", part:"c"}, {w:"cap", part:"c"}, {w:"camp", part:"c"}, {w:"can", part:"c"},
+    {w:"kid", part:"k"}, {w:"king", part:"k"}, {w:"kite", part:"k"}, {w:"key", part:"k"},
+    {w:"kick", part:"ck"}, {w:"sock", part:"ck"}, {w:"neck", part:"ck"}, {w:"black", part:"ck"}
+  ],
+  "Ee / ee": [
+    {w:"bed", part:"e"}, {w:"red", part:"e"}, {w:"pen", part:"e"}, {w:"ten", part:"e"},
+    {w:"he", part:"e"}, {w:"she", part:"e"}, {w:"me", part:"e"}, {w:"we", part:"e"},
+    {w:"see", part:"ee"}, {w:"tree", part:"ee"}, {w:"green", part:"ee"}, {w:"feet", part:"ee"}
+  ]
+};
+groups["Mixed Practice"] = Object.entries(groups).flatMap(([k,v]) => k==="Mixed Practice"?[]:v);
+
+let selectedGroup=null, mode=null, round=[], idx=0, correct=0, attempts=0, errors=[], locked=false;
+const $=id=>document.getElementById(id);
+const groupBox=$("groups");
+
+Object.keys(groups).forEach(name=>{
+  const b=document.createElement("button"); b.textContent=name;
+  b.addEventListener("click",()=>{
+    [...groupBox.children].forEach(x=>x.classList.remove("primary"));
+    b.classList.add("primary"); selectedGroup=name; updateStart();
+  }); groupBox.appendChild(b);
+});
+document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("[data-mode]").forEach(x=>x.classList.remove("primary"));
+  b.classList.add("primary"); mode=b.dataset.mode; updateStart();
+}));
+function updateStart(){ $("start").disabled=!(selectedGroup&&mode); }
+function shuffle(a){ return [...a].sort(()=>Math.random()-.5); }
+function buildRound(items){ return shuffle(items).slice(0,Math.min(10,items.length)); }
+
+function americanVoice(){
+  const voices=speechSynthesis.getVoices();
+  return voices.find(v=>v.lang==="en-US" && /Samantha|Google US English|Microsoft.*(Aria|Jenny|Guy)/i.test(v.name))
+      || voices.find(v=>v.lang==="en-US") || voices.find(v=>/^en/i.test(v.lang)) || null;
+}
+function speak(){
+  if (!("speechSynthesis" in window) || !round[idx]) {
+    $("feedback").textContent="Audio is not supported in this browser.";
+    $("feedback").className="feedback bad";
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(round[idx].w);
+  u.lang="en-US"; u.rate=.78; u.pitch=1;
+  const v=americanVoice(); if(v) u.voice=v;
+  window.speechSynthesis.speak(u);
+}
+function masked(item){
+  const p=item.part, pos=item.w.indexOf(p);
+  if(pos<0) return "_".repeat(item.w.length);
+  return item.w.slice(0,pos)+"_".repeat(p.length)+item.w.slice(pos+p.length);
+}
+function start(items=null){
+  round=buildRound(items||groups[selectedGroup]); idx=0; correct=0; errors=[];
+  $("setup").classList.add("hidden"); $("finish").classList.add("hidden"); $("game").classList.remove("hidden"); load();
+}
+function load(){
+  attempts=0; locked=false; $("answer").value=""; $("feedback").textContent=""; $("feedback").className="feedback";
+  $("hint").classList.add("hidden"); $("hintBtn").classList.add("hidden"); $("next").classList.add("hidden"); $("check").classList.remove("hidden");
+  $("progress").textContent=`Word ${idx+1} of ${round.length}`; $("score").textContent=`⭐ ${correct} correct`;
+  $("prompt").textContent = mode==="complete" ? `Complete the word: ${masked(round[idx])}` : "Write the whole word.";
+  $("answer").placeholder = mode==="complete" ? "Type the missing letters" : "Type the word";
+  $("answer").focus();
+}
+function expected(){
+  return mode==="complete" ? round[idx].part.toLowerCase() : round[idx].w.toLowerCase();
+}
+function check(){
+  if(locked)return; const val=$("answer").value.trim().toLowerCase();
+  if(!val){ $("feedback").textContent="Type your answer first."; $("feedback").className="feedback bad"; return; }
+  attempts++;
+  if(val===expected()){
+    locked=true; correct++; $("feedback").textContent=`✓ Great! ${round[idx].w}`; $("feedback").className="feedback ok";
+    $("check").classList.add("hidden"); $("hintBtn").classList.add("hidden"); $("next").classList.remove("hidden");
+  } else {
+    $("feedback").textContent="Try again! Listen carefully."; $("feedback").className="feedback bad";
+    if(attempts>=2) $("hintBtn").classList.remove("hidden");
+    $("answer").select();
+  }
+}
+function showHint(){
+  const item=round[idx];
+  $("hint").innerHTML = mode==="complete"
+    ? `💡 Choose the spelling you hear: <b>${item.part}</b>`
+    : `💡 ${masked(item)} &nbsp; — think about the missing sound.`;
+  $("hint").classList.remove("hidden");
+  if(!errors.some(x=>x.w===item.w)) errors.push(item);
+}
+function next(){
+  if(attempts>1 && !errors.some(x=>x.w===round[idx].w)) errors.push(round[idx]);
+  idx++; if(idx>=round.length) finish(); else load();
+}
+function finish(){
+  $("game").classList.add("hidden"); $("finish").classList.remove("hidden");
+  $("finalScore").textContent=`${correct} / ${round.length}`;
+  $("summary").innerHTML=`<span class="pill">✅ ${correct} correct</span><span class="pill">🔄 ${errors.length} to practise</span>`;
+  $("mistakes").classList.toggle("hidden",errors.length===0);
+}
+$("start").addEventListener("click",()=>start());
+$("listen").addEventListener("click",speak); $("check").addEventListener("click",check);
+$("hintBtn").addEventListener("click",showHint); $("next").addEventListener("click",next);
+$("answer").addEventListener("keydown",e=>{if(e.key==="Enter"){ locked?next():check(); }});
+$("mistakes").addEventListener("click",()=>{const m=[...errors]; start(m);});
+$("home").addEventListener("click",()=>{$("finish").classList.add("hidden");$("setup").classList.remove("hidden");});
+if("speechSynthesis" in window){
+  speechSynthesis.getVoices();
+  if("onvoiceschanged" in speechSynthesis) speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
+}
+</script>
+</body>
+</html>
